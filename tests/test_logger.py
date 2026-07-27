@@ -5,7 +5,13 @@ from logging.handlers import RotatingFileHandler
 
 import pytest
 
-from src.logger import BACKUP_COUNT, LOGGER_NAME, MAX_BYTES, configure_logger
+from src.logger import (
+    BACKUP_COUNT,
+    LOGGER_NAME,
+    MAX_BYTES,
+    TqdmLoggingHandler,
+    configure_logger,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -80,6 +86,19 @@ class TestNiveis:
         console = handlers_de(logger, logging.StreamHandler)[0]
 
         assert console.level == logging.DEBUG
+
+
+class TestConvivenciaComABarraDeProgresso:
+    def test_console_escreve_pelo_tqdm(self, tmp_path):
+        """Escrever direto no terminal embaralharia a linha da barra."""
+        logger = configure_logger(log_file=tmp_path / "execucao.log")
+
+        assert handlers_de(logger, TqdmLoggingHandler) != []
+
+    def test_mensagem_chega_ao_console(self, tmp_path, capsys):
+        configure_logger(log_file=tmp_path / "execucao.log").info("andamento")
+
+        assert "andamento" in capsys.readouterr().err
 
 
 class TestRobustez:

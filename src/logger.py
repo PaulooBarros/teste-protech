@@ -6,6 +6,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from tqdm import tqdm
+
 LOGGER_NAME = "dependency_report"
 DEFAULT_LOG_FILE = Path("logs") / "dependency_report.log"
 
@@ -16,6 +18,26 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # execução sobre um projeto grande cresceria sem limite.
 MAX_BYTES = 1_000_000
 BACKUP_COUNT = 3
+
+
+class TqdmLoggingHandler(logging.StreamHandler):
+    """Saída de console que convive com a barra de progresso.
+
+    Um `StreamHandler` comum escreve direto no terminal e embaralha a linha
+    da barra. O `tqdm.write` apaga a barra, imprime a mensagem e redesenha
+    logo abaixo. Sem barra ativa, comporta-se como um handler normal.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            tqdm.write(self.format(record), file=self.stream)
+            self.flush()
+        except RecursionError:  # tratada à parte, como faz a própria stdlib
+            raise
+        except Exception:  # noqa: BLE001 - registrar log não pode derrubar a aplicação
+            # Mesmo tratamento do `StreamHandler` da biblioteca padrão:
+            # `handleError` encaminha o problema sem propagar a exceção.
+            self.handleError(record)
 
 
 def configure_logger(
@@ -41,7 +63,7 @@ def configure_logger(
 
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 
-    console = logging.StreamHandler()
+    console = TqdmLoggingHandler()
     console.setLevel(logging.DEBUG if verbose else logging.INFO)
     console.setFormatter(formatter)
     logger.addHandler(console)

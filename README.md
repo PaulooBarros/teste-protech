@@ -83,6 +83,19 @@ python -m src.main --input examples/pyproject-exemplo.toml --output pyproject-re
 | `--no-log-file` | Grava apenas no console, sem arquivo |
 | `--verbose` | Mostra também as mensagens de depuração no console |
 
+## Acompanhamento da execução
+
+Cada dependência exige uma consulta ao PyPI e outra ao portal, então uma lista
+grande leva minutos. Uma barra mostra o andamento e o tempo estimado:
+
+```
+Consultando dependências:  50%|█████     | 3/6 [00:08<00:08, 2.7s/pacote]
+```
+
+Ela se desliga sozinha quando a saída não é um terminal — redirecionada para
+arquivo ou executada em integração contínua, só produziria caracteres de
+controle. Nesses casos, o registro de log continua indicando o andamento.
+
 ## Logs
 
 A execução é registrada em dois lugares, com finalidades diferentes:

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+from collections.abc import Iterable
 from pathlib import Path
+from typing import TypeVar
+
+from tqdm import tqdm
 
 from src.logger import DEFAULT_LOG_FILE, configure_logger
 from src.models import DependencyInfo
@@ -15,6 +19,8 @@ from src.snyk_scraper import SnykScraper
 
 # O parser é escolhido pela extensão, e não pelo nome exato do arquivo:
 # nomes como `requirements-dev.txt` são comuns e devem funcionar.
+T = TypeVar("T")
+
 PARSERS_BY_SUFFIX = {
     ".txt": parse_requirements,
     ".toml": parse_pyproject,
@@ -104,6 +110,26 @@ def collect_dependency(
     )
 
 
+def _with_progress(items: Iterable[T], total: int) -> Iterable[T]:
+    """Envolve a iteração em uma barra de progresso.
+
+    Cada dependência exige uma consulta ao PyPI e outra ao portal, então uma
+    lista grande leva minutos. A barra informa quanto falta e o tempo
+    estimado, o que os registros de log sozinhos não dizem.
+
+    `disable=None` desliga a barra automaticamente quando a saída não é um
+    terminal — redirecionada para arquivo ou executada em integração
+    contínua, ela só produziria caracteres de controle.
+    """
+    return tqdm(
+        items,
+        total=total,
+        desc="Consultando dependências",
+        unit="pacote",
+        disable=None,
+    )
+
+
 def main() -> None:
     args = parse_args()
     logger = configure_logger(
@@ -119,7 +145,7 @@ def main() -> None:
         headless=not args.show_browser,
     )
     with PyPiClient() as pypi, scraper:
-        for name, version in dependencies.items():
+        for name, version in _with_progress(dependencies.items(), len(dependencies)):
             collected.append(collect_dependency(name, version, pypi, scraper, logger))
 
     destination = Path(args.output)

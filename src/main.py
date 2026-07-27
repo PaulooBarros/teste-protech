@@ -84,6 +84,7 @@ def collect_dependency(
         snyk_score=snyk_data.score,
         vulnerabilities_total=snyk_data.vulnerabilities_total,
         vulnerabilities_latest=snyk_data.vulnerabilities_latest,
+        vulnerabilities_pypi=package_info.get("vulnerabilities"),
     )
 
 

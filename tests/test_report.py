@@ -4,9 +4,10 @@ from datetime import datetime
 
 import pytest
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 
 from src.models import DependencyInfo
-from src.report import build_report
+from src.report import COLUMNS, build_report
 
 DESTAQUE = "00FFC7CE"
 SEM_PREENCHIMENTO = "00000000"
@@ -57,11 +58,12 @@ class TestEstrutura:
             snyk_score=90,
             vulnerabilities_total=6,
             vulnerabilities_latest=0,
+            vulnerabilities_pypi=0,
         )
         sheet = gerar(tmp_path, [dependencia])
         linha = [cell.value for cell in sheet[2]]
 
-        assert linha[:9] == [
+        assert linha[:10] == [
             "flask",
             "==3.1.3",
             "3.1.3",
@@ -71,7 +73,20 @@ class TestEstrutura:
             90,
             6,
             0,
+            0,
         ]
+
+    def test_fontes_divergentes_aparecem_lado_a_lado(self, tmp_path):
+        """A divergência entre Snyk e OSV é informação, não erro a esconder."""
+        dependencia = DependencyInfo(
+            name="pycrypto",
+            vulnerabilities_total=4,
+            vulnerabilities_latest=2,
+            vulnerabilities_pypi=4,
+        )
+        sheet = gerar(tmp_path, [dependencia])
+
+        assert [cell.value for cell in sheet[2]][7:10] == [4, 2, 4]
 
     def test_campos_ausentes_ficam_vazios(self, tmp_path):
         sheet = gerar(tmp_path, [DependencyInfo(name="desconhecido")])
@@ -108,10 +123,14 @@ class TestUsabilidade:
         assert sheet.freeze_panes == "A2"
 
     def test_habilita_filtro_nas_colunas(self, tmp_path):
+        """O filtro deve cobrir todas as colunas e todas as linhas de dados."""
         dependencias = [DependencyInfo(name="flask"), DependencyInfo(name="requests")]
         sheet = gerar(tmp_path, dependencias)
 
-        assert sheet.auto_filter.ref == "A1:J3"
+        ultima_coluna = get_column_letter(len(COLUMNS))
+        ultima_linha = len(dependencias) + 1  # + cabeçalho
+
+        assert sheet.auto_filter.ref == f"A1:{ultima_coluna}{ultima_linha}"
 
     def test_planilha_tem_aba_de_legenda(self, tmp_path):
         destino = tmp_path / "report.xlsx"

@@ -9,6 +9,16 @@ logger = logging.getLogger("dependency_report.pypi")
 LICENSE_CLASSIFIER_PREFIX = "License :: "
 MAX_LICENSE_LENGTH = 100
 
+# Campos devolvidos por fetch_package_info. Nomeados em um só lugar para que
+# o retorno de sucesso e o de falha não saiam de sincronia.
+FIELDS = (
+    "pypi_version",
+    "description",
+    "license",
+    "last_release_date",
+    "vulnerabilities",
+)
+
 
 def fetch_package_info(package_name: str) -> Dict[str, Optional[str]]:
     url = f"https://pypi.org/pypi/{package_name}/json"
@@ -18,24 +28,28 @@ def fetch_package_info(package_name: str) -> Dict[str, Optional[str]]:
         payload = response.json()
 
         info = payload.get("info", {})
-        releases = payload.get("releases", {})
-
-        last_release_date = _extract_last_release_date(releases)
 
         return {
             "pypi_version": info.get("version"),
             "description": info.get("summary"),
             "license": _extract_license(info),
-            "last_release_date": last_release_date,
+            "last_release_date": _extract_last_release_date(payload.get("releases", {})),
+            "vulnerabilities": _count_vulnerabilities(payload),
         }
     except requests.RequestException as exc:
         logger.error("Falha ao consultar PyPI para %s: %s", package_name, exc)
-        return {
-            "pypi_version": None,
-            "description": None,
-            "license": None,
-            "last_release_date": None,
-        }
+        return dict.fromkeys(FIELDS)
+
+
+def _count_vulnerabilities(payload: Dict) -> Optional[int]:
+    """Conta as vulnerabilidades que o PyPI reporta para a versão mais recente.
+
+    A origem é a base OSV, independente do Snyk, o que permite cruzar as duas
+    fontes. O número não substitui o do portal: cobre apenas a versão atual,
+    sem o histórico do pacote.
+    """
+    vulnerabilities = payload.get("vulnerabilities")
+    return len(vulnerabilities) if isinstance(vulnerabilities, list) else None
 
 
 def _extract_license(info: Dict) -> Optional[str]:

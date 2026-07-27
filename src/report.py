@@ -71,6 +71,12 @@ COLUMNS: Sequence[Column] = (
         width=15,
         numeric=True,
     ),
+    Column(
+        "Vulnerabilidades (PyPI/OSV)",
+        lambda item: item.vulnerabilities_pypi,
+        width=15,
+        numeric=True,
+    ),
     Column("Notas", lambda item: item.notes, width=32),
 )
 
@@ -160,6 +166,12 @@ def _write_legend(workbook: Workbook) -> None:
         (
             "Vulnerabilidades (versão atual)",
             "Quantas dessas ainda afetam a versão mais recente. É um subconjunto do total.",
+        ),
+        (
+            "Vulnerabilidades (PyPI/OSV)",
+            "Vulnerabilidades na versão atual segundo a base OSV, informada pela API do PyPI. "
+            "É uma fonte independente do Snyk: divergência entre as duas colunas significa que "
+            "as bases avaliam de forma diferente quais versões são afetadas.",
         ),
         ("Notas", "Motivo de eventual falha na coleta dos dados da dependência."),
     ]

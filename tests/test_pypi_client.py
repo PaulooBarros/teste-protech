@@ -115,6 +115,41 @@ class TestDataDaUltimaPublicacao:
         assert resultado["last_release_date"] is None
 
 
+class TestVulnerabilidades:
+    """Contagem vinda da base OSV, usada para cruzar com os dados do Snyk."""
+
+    def test_conta_as_vulnerabilidades_reportadas(self):
+        payload = {
+            "info": {},
+            "releases": {},
+            "vulnerabilities": [
+                {"id": "PYSEC-2017-94", "aliases": ["CVE-2013-7459"]},
+                {"id": "PYSEC-2013-25", "aliases": []},
+            ],
+        }
+        resultado, _ = fetch_with_payload(payload)
+
+        assert resultado["vulnerabilities"] == 2
+
+    def test_lista_vazia_significa_nenhuma_vulnerabilidade(self):
+        """Zero é uma resposta, diferente de dado ausente."""
+        resultado, _ = fetch_with_payload({"info": {}, "releases": {}, "vulnerabilities": []})
+
+        assert resultado["vulnerabilities"] == 0
+
+    def test_campo_ausente_devolve_none(self):
+        """Sem o campo, não sabemos a contagem — não é o mesmo que zero."""
+        resultado, _ = fetch_with_payload({"info": {}, "releases": {}})
+
+        assert resultado["vulnerabilities"] is None
+
+    @pytest.mark.parametrize("valor", [None, "3", 3, {}])
+    def test_formato_inesperado_devolve_none(self, valor):
+        resultado, _ = fetch_with_payload({"info": {}, "releases": {}, "vulnerabilities": valor})
+
+        assert resultado["vulnerabilities"] is None
+
+
 class TestTratamentoDeErros:
     @pytest.mark.parametrize(
         "erro",
@@ -134,4 +169,14 @@ class TestTratamentoDeErros:
             "description": None,
             "license": None,
             "last_release_date": None,
+            "vulnerabilities": None,
         }
+
+    def test_retorno_de_falha_tem_as_mesmas_chaves_do_sucesso(self):
+        """Chaves diferentes entre sucesso e falha quebrariam quem consome."""
+        sucesso, _ = fetch_with_payload({"info": {}, "releases": {}, "vulnerabilities": []})
+
+        with patch("src.pypi_client.requests.get", side_effect=requests.Timeout()):
+            falha = fetch_package_info("inexistente")
+
+        assert sucesso.keys() == falha.keys()

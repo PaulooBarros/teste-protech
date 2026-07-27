@@ -13,6 +13,12 @@ class DependencyInfo:
     gerada assim mesmo, com os campos que faltaram vazios e o motivo em
     `notes`. O modelo não conhece o formato da planilha — a disposição das
     colunas é responsabilidade de `src.report`.
+
+    As três contagens de vulnerabilidade vêm de fontes distintas e são
+    mantidas separadas de propósito: `vulnerabilities_total` e
+    `vulnerabilities_latest` vêm do portal Snyk, enquanto
+    `vulnerabilities_pypi` vem da base OSV, via API do PyPI. Elas podem
+    divergir, e a divergência é informação — não erro a ser reconciliado.
     """
 
     name: str
@@ -24,4 +30,5 @@ class DependencyInfo:
     snyk_score: Optional[int] = None
     vulnerabilities_total: Optional[int] = None
     vulnerabilities_latest: Optional[int] = None
+    vulnerabilities_pypi: Optional[int] = None
     notes: Optional[str] = None

@@ -1,0 +1,27 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Editor settings
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Relatórios gerados pela aplicação, exceto o exemplo versionado
+*.xlsx
+!examples/*.xlsx
+
+# Material do processo seletivo e notas de trabalho:
+# não fazem parte da solução entregue.
+Teste - Avaliação de Candidatos.pdf
+claude.md
+TASKS.md

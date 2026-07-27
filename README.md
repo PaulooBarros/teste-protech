@@ -36,7 +36,7 @@ python -m pip install -r requirements.txt
 python -m src.main --input requirements.txt --output report.xlsx
 ```
 
-3. Para `pyproject.toml`:
+3. O mesmo vale para `pyproject.toml`:
 
 ```bash
 python -m src.main --input pyproject.toml --output report.xlsx
@@ -51,15 +51,23 @@ O parser é escolhido pela extensão do arquivo, então nomes como
 
 ## Exemplo
 
-A pasta `examples/` traz um arquivo de entrada e a planilha gerada a partir
-dele, para consultar o resultado sem precisar executar a aplicação:
+A pasta `examples/` traz arquivos de entrada nos dois formatos aceitos e a
+planilha gerada, para consultar o resultado sem precisar executar a aplicação.
 
 ```bash
 python -m src.main --input examples/requirements-exemplo.txt --output examples/report.xlsx
 ```
 
-Ele inclui de propósito o `pycrypto`, um pacote abandonado com score 44, para
-demonstrar o destaque visual.
+Os dois exemplos incluem de propósito o `pycrypto`, um pacote abandonado com
+score 44, para demonstrar o destaque visual.
+
+Para verificar o outro formato de entrada, o `examples/pyproject-exemplo.toml`
+declara dependências tanto no padrão da PEP 621 quanto no do Poetry, e ambos
+são lidos na mesma execução:
+
+```bash
+python -m src.main --input examples/pyproject-exemplo.toml --output pyproject-report.xlsx
+```
 
 ### Opções
 
@@ -72,23 +80,49 @@ demonstrar o destaque visual.
 
 ## Dados coletados
 
-Da API pública do PyPI: última versão, descrição, licença e data da última
-publicação.
+Do portal Snyk, via Selenium: o *Package Health Score* (0 a 100) e duas
+contagens de vulnerabilidades.
 
-Do portal Snyk, via Selenium: o *Package Health Score* (0 a 100) e a contagem
-de vulnerabilidades.
+Da API pública do PyPI: última versão, descrição, licença, data da última
+publicação e uma terceira contagem de vulnerabilidades, vinda da base OSV.
 
-### Por que duas colunas de vulnerabilidades
+### Por que três colunas de vulnerabilidades
 
-O Snyk expõe dois números diferentes, e ambos vão para a planilha:
+Os números medem coisas diferentes, e reduzi-los a um só esconderia
+informação relevante para uma análise de segurança:
 
-- **Vulnerabilidades (total)** — histórico completo do pacote
-- **Vulnerabilidades (versão atual)** — quantas ainda afetam a última versão
+| Coluna | Fonte | O que mede |
+|---|---|---|
+| Vulnerabilidades (total) | Snyk | histórico completo do pacote |
+| Vulnerabilidades (versão atual) | Snyk | quantas ainda afetam a última versão |
+| Vulnerabilidades (PyPI/OSV) | PyPI | idem, segundo uma base independente |
 
-O total é um superconjunto, não um período separado. `6 total / 0 atual`
-indica um pacote com histórico mas bem mantido, enquanto `4 total / 2 atual`
-é sinal de alerta. Mostrar apenas um dos dois esconderia informação relevante
-para a análise.
+As duas primeiras vêm da mesma fonte e se relacionam: o total é um
+superconjunto. `6 total / 0 atual` indica um pacote com histórico mas bem
+mantido, enquanto `4 total / 2 atual` é sinal de alerta.
+
+A terceira vem de outra base de dados e serve para **cruzar as fontes**. Nos
+seis pacotes de `examples/`, ela concorda com a coluna do Snyk em cinco. No
+`pycrypto` elas divergem — o OSV conta 4 e o Snyk 2 —, porque as bases
+avaliam de forma diferente quais faixas de versão são afetadas. Como não há
+como afirmar qual está certa, a planilha mostra as duas em vez de escolher
+uma e esconder a divergência.
+
+Ela também funciona como rede de segurança: se o scraping do Snyk falhar, a
+contagem do PyPI ainda aparece, porque vem da requisição que já era feita de
+qualquer forma.
+
+### Zero é diferente de vazio
+
+Nas colunas de vulnerabilidade e de score, `0` e célula vazia não significam
+a mesma coisa:
+
+- **`0`** — a fonte respondeu e afirma que não há nenhuma
+- **vazia** — não foi possível obter o dado
+
+Um pacote não consultado nunca aparece como `0`, e nunca é destacado em
+vermelho. Ausência de dado disfarçada de boa notícia seria o pior erro
+possível em uma ferramenta de análise de segurança.
 
 ### Por que a busca do portal não é usada
 
@@ -138,8 +172,13 @@ manualmente.
 
 ## Observações
 
-- A planilha destaca em vermelho as linhas com `Score < 65`.
+- A planilha destaca em vermelho as linhas com `Score < 65`. A segunda aba,
+  "Legenda", descreve cada coluna e o critério do destaque.
 - Falhas em uma dependência não interrompem a execução: o erro é registrado no
   log, a coluna "Notas" é preenchida e o processamento segue para a próxima.
-- Se um pacote não existir no Snyk, a linha é gerada com os campos de score e
-  vulnerabilidades vazios.
+- Se um pacote não existir no Snyk, a linha é gerada com o score e as duas
+  colunas do portal vazios — os dados do PyPI, inclusive a contagem OSV,
+  continuam preenchidos.
+- Os dados do portal mudam com o tempo. Duas planilhas geradas em dias
+  diferentes podem divergir: o `django`, por exemplo, passou de 158 para 161
+  vulnerabilidades no intervalo de algumas horas.

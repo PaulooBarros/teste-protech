@@ -1,0 +1,14 @@
+# Torna o tratamento de quebras de linha determinístico, independente da
+# configuração local de cada desenvolvedor (`core.autocrlf`). Sem este
+# arquivo, quem clona o projeto no Windows e no Linux obtém resultados
+# diferentes.
+#
+# O repositório guarda sempre LF, e o diretório de trabalho também: é o padrão
+# esperado por ferramentas Python e por ambientes de integração contínua.
+* text=auto eol=lf
+
+# Arquivos binários nunca devem sofrer conversão de quebra de linha, sob risco
+# de corromper o conteúdo. O Git costuma detectá-los sozinho, mas declarar
+# remove a dependência dessa heurística.
+*.xlsx binary
+*.pdf  binary

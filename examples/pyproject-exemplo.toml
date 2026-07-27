@@ -1,0 +1,21 @@
+# Arquivo de exemplo para demonstrar a leitura de pyproject.toml.
+#
+# Declara dependências nos dois formatos que a aplicação reconhece: o padrão
+# da PEP 621, em [project], e o do Poetry, em [tool.poetry.dependencies].
+# Um projeto real usaria apenas um dos dois; aqui os dois aparecem juntos de
+# propósito, para exercitar os dois caminhos em uma única execução.
+
+[project]
+name = "exemplo"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "requests[security]==2.31.0",
+    "openpyxl",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pycrypto = "2.6.1"
+selenium = { version = "^4.17" }

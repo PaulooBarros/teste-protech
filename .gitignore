@@ -16,6 +16,11 @@ env/
 # Logs
 *.log
 
+# Artefatos de teste
+testes.html
+assets/
+.pytest_cache/
+
 # Relatórios gerados pela aplicação, exceto o exemplo versionado
 *.xlsx
 !examples/*.xlsx

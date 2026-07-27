@@ -81,6 +81,58 @@ class TestEstrutura:
         assert all(valor in (None, "") for valor in linha[1:])
 
 
+class TestValoresDeTexto:
+    """O Excel interpreta qualquer célula iniciada por `=` como fórmula."""
+
+    @pytest.mark.parametrize("especificador", ["==3.1.3", "==2.6.1", "=1.0"])
+    def test_especificador_com_igual_nao_vira_formula(self, tmp_path, especificador):
+        dependencia = DependencyInfo(name="flask", requested_version=especificador)
+        sheet = gerar(tmp_path, [dependencia])
+        cell = sheet.cell(row=2, column=2)
+
+        assert cell.data_type == "s"
+        assert cell.value == especificador
+
+    @pytest.mark.parametrize("especificador", [">=2.31.0", "<2.0", "~=5.0", "^4.17"])
+    def test_demais_especificadores_seguem_como_texto(self, tmp_path, especificador):
+        dependencia = DependencyInfo(name="requests", requested_version=especificador)
+        sheet = gerar(tmp_path, [dependencia])
+
+        assert sheet.cell(row=2, column=2).value == especificador
+
+
+class TestUsabilidade:
+    def test_cabecalho_fica_congelado(self, tmp_path):
+        sheet = gerar(tmp_path, [DependencyInfo(name="flask")])
+
+        assert sheet.freeze_panes == "A2"
+
+    def test_habilita_filtro_nas_colunas(self, tmp_path):
+        dependencias = [DependencyInfo(name="flask"), DependencyInfo(name="requests")]
+        sheet = gerar(tmp_path, dependencias)
+
+        assert sheet.auto_filter.ref == "A1:J3"
+
+    def test_planilha_tem_aba_de_legenda(self, tmp_path):
+        destino = tmp_path / "report.xlsx"
+        build_report([DependencyInfo(name="flask")], destino)
+        workbook = load_workbook(destino)
+
+        assert workbook.sheetnames == ["Dependências", "Legenda"]
+
+    def test_legenda_descreve_todas_as_colunas(self, tmp_path):
+        destino = tmp_path / "report.xlsx"
+        build_report([DependencyInfo(name="flask")], destino)
+        workbook = load_workbook(destino)
+
+        dados = workbook["Dependências"]
+        legenda = workbook["Legenda"]
+        cabecalhos = {cell.value for cell in dados[1]}
+        descritos = {cell.value for cell in legenda["A"]}
+
+        assert cabecalhos <= descritos
+
+
 class TestDestaqueVisual:
     """Requisito: destacar dependências com score inferior a 65."""
 

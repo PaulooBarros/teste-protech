@@ -111,6 +111,25 @@ python -m pytest
 > Use `python -m pytest` em vez de `pytest`: o diretório de scripts do Python
 > nem sempre está no `PATH`, e essa forma funciona em qualquer instalação.
 
+Comandos úteis durante o desenvolvimento:
+
+```bash
+python -m pytest -v                        # lista cada teste pelo nome
+python -m pytest tests/test_parsers.py -v   # só um arquivo
+python -m pytest -k "destaque" -v           # só os testes do destaque visual
+```
+
+### Relatório em HTML
+
+Para visualizar o resultado em uma página, em vez da saída do terminal:
+
+```bash
+python -m pytest --html=testes.html --self-contained-html
+```
+
+Abra o `testes.html` gerado no navegador. O `--self-contained-html` embute o
+CSS no próprio arquivo, o que permite compartilhá-lo isoladamente.
+
 Os testes cobrem a leitura de dependências, o tratamento das respostas do
 PyPI e a geração da planilha — inclusive os limites do destaque visual
 (scores 64, 65 e ausente). Não há testes de navegador: o scraping depende do

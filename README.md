@@ -79,6 +79,28 @@ python -m src.main --input examples/pyproject-exemplo.toml --output pyproject-re
 | `--output` | Caminho do arquivo `.xlsx` gerado (obrigatório) |
 | `--driver` | Caminho para um ChromeDriver específico, se não quiser usar o automático |
 | `--show-browser` | Abre o navegador em modo visível, útil para depurar o scraping |
+| `--log-file` | Arquivo de log da execução (padrão: `logs/dependency_report.log`) |
+| `--no-log-file` | Grava apenas no console, sem arquivo |
+| `--verbose` | Mostra também as mensagens de depuração no console |
+
+## Logs
+
+A execução é registrada em dois lugares, com finalidades diferentes:
+
+| Destino | Nível | Para quê |
+|---|---|---|
+| Console | `INFO` em diante | acompanhar o andamento |
+| `logs/dependency_report.log` | `DEBUG` em diante | diagnosticar depois que o problema aconteceu |
+
+O arquivo guarda detalhes que só atrapalhariam no console — por exemplo,
+cada linha do `requirements.txt` que foi ignorada e por quê. Use
+`--verbose` para ver essas mensagens também na tela.
+
+O arquivo rotaciona a cada 1 MB, mantendo os três anteriores, para que uma
+execução sobre um projeto grande não cresça sem limite.
+
+Não conseguir gravar o log não interrompe o relatório: um aviso vai para o
+console e a execução segue.
 
 ## Dados coletados
 

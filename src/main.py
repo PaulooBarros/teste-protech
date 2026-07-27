@@ -6,7 +6,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from src.logger import configure_logger
+from src.logger import DEFAULT_LOG_FILE, configure_logger
 from src.models import DependencyInfo
 from src.parsers import parse_pyproject, parse_requirements
 from src.pypi_client import PyPiClient
@@ -32,6 +32,22 @@ def parse_args() -> argparse.Namespace:
         "--show-browser",
         action="store_true",
         help="Executa o navegador em modo visível, útil para depurar o scraping",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        default=DEFAULT_LOG_FILE,
+        help=f"Arquivo de log da execução (padrão: {DEFAULT_LOG_FILE})",
+    )
+    parser.add_argument(
+        "--no-log-file",
+        action="store_true",
+        help="Não grava log em arquivo, apenas no console",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Mostra também as mensagens de depuração no console",
     )
     return parser.parse_args()
 
@@ -89,8 +105,11 @@ def collect_dependency(
 
 
 def main() -> None:
-    logger = configure_logger()
     args = parse_args()
+    logger = configure_logger(
+        log_file=None if args.no_log_file else args.log_file,
+        verbose=args.verbose,
+    )
 
     dependencies = load_dependencies(Path(args.input), logger)
 

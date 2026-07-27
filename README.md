@@ -11,6 +11,7 @@ Este projeto lê dependências Python de `requirements.txt` ou `pyproject.toml`,
 - `src/report.py`: gera o relatório em Excel
 - `src/models.py`: modelos de dados
 - `src/logger.py`: configuração de logs
+- `tests/`: testes automatizados
 
 ## Pré-requisitos
 
@@ -81,6 +82,24 @@ retorna `fflask` — um pacote malicioso que imita o nome — entre os primeiros
 resultados. Uma lógica de "clicar no primeiro resultado" coletaria dados do
 pacote errado sem nenhum aviso. Os nomes são normalizados conforme a PEP 503
 antes de montar a URL.
+
+## Testes
+
+Instale as dependências de desenvolvimento e execute a suíte:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
+> Use `python -m pytest` em vez de `pytest`: o diretório de scripts do Python
+> nem sempre está no `PATH`, e essa forma funciona em qualquer instalação.
+
+Os testes cobrem a leitura de dependências, o tratamento das respostas do
+PyPI e a geração da planilha — inclusive os limites do destaque visual
+(scores 64, 65 e ausente). Não há testes de navegador: o scraping depende do
+HTML de um site externo, que muda sem aviso, então essa parte é validada
+manualmente.
 
 ## Observações
 

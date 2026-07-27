@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from src.logger import configure_logger
 from src.models import DependencyInfo
 from src.parsers import parse_pyproject, parse_requirements
-from src.pypi_client import fetch_package_info
+from src.pypi_client import PyPiClient
 from src.report import build_report
 from src.snyk_scraper import SnykScraper
 
@@ -57,6 +57,7 @@ def load_dependencies(source_path: Path, logger: logging.Logger) -> Dict[str, Op
 def collect_dependency(
     name: str,
     requested_version: Optional[str],
+    pypi: PyPiClient,
     scraper: SnykScraper,
     logger: logging.Logger,
 ) -> DependencyInfo:
@@ -68,7 +69,7 @@ def collect_dependency(
     """
     logger.info("Processando dependência: %s", name)
     try:
-        package_info = fetch_package_info(name)
+        package_info = pypi.fetch(name)
         snyk_data = scraper.fetch(name)
     except Exception as exc:  # noqa: BLE001 - nenhuma dependência pode abortar o relatório
         logger.exception("Erro inesperado ao processar %s", name)
@@ -95,12 +96,13 @@ def main() -> None:
     dependencies = load_dependencies(Path(args.input), logger)
 
     collected: List[DependencyInfo] = []
-    with SnykScraper(
+    scraper = SnykScraper(
         driver_path=Path(args.driver) if args.driver else None,
         headless=not args.show_browser,
-    ) as scraper:
+    )
+    with PyPiClient() as pypi, scraper:
         for name, version in dependencies.items():
-            collected.append(collect_dependency(name, version, scraper, logger))
+            collected.append(collect_dependency(name, version, pypi, scraper, logger))
 
     destination = Path(args.output)
     build_report(collected, destination)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -30,6 +31,10 @@ VULNERABILITY_TABLE_SELECTOR = "table[data-snyk-test='PackageVulnerabilitiesTabl
 VULNERABILITY_ROW_SELECTOR = f"{VULNERABILITY_TABLE_SELECTOR} a[data-snyk-test='vuln table title']"
 EMPTY_STATE_SELECTOR = ".empty-state__description"
 FILTER_CHECKBOX_SELECTOR = ".toggle__field"
+
+# O portal responde com esta página quando o pacote não está no catálogo.
+# Reconhecê-la evita repetir uma consulta que nunca vai ter sucesso.
+NOT_FOUND_TITLE = "package not found"
 
 SCORE_PATTERN = re.compile(r"(\d+)\s*/\s*100")
 TOTAL_VULNERABILITIES_PATTERN = re.compile(r"(\d+)\s+total\s+vulnerabilit", re.IGNORECASE)
@@ -68,12 +73,17 @@ class SnykScraper:
         timeout: int = 15,
         filter_timeout: int = 5,
         headless: bool = True,
+        attempts: int = 3,
+        retry_wait: float = 2.0,
+        driver: Optional[webdriver.Chrome] = None,
     ) -> None:
+        self._driver = driver
         self._driver_path = driver_path
         self._timeout = timeout
         self._filter_timeout = filter_timeout
         self._headless = headless
-        self._driver: Optional[webdriver.Chrome] = None
+        self._attempts = attempts
+        self._retry_wait = retry_wait
 
     def __enter__(self) -> "SnykScraper":
         self.start()
@@ -84,7 +94,11 @@ class SnykScraper:
         return False
 
     def start(self) -> None:
-        """Abre o navegador, caso ainda não esteja aberto."""
+        """Abre o navegador, caso ainda não esteja aberto.
+
+        Um navegador recebido no construtor é usado como está, o que permite
+        exercitar a classe nos testes sem abrir o Chrome de verdade.
+        """
         if self._driver is not None:
             return
 
@@ -117,14 +131,7 @@ class SnykScraper:
             raise RuntimeError("O navegador não foi iniciado. Use start() ou o bloco with.")
 
         url = PACKAGE_URL.format(package=self._normalize_name(package_name))
-        try:
-            self._driver.get(url)
-            self._wait_for_package_page()
-        except TimeoutException:
-            logger.warning("Pacote não encontrado no Snyk ou página demorou demais: %s", package_name)
-            return SnykPackageData()
-        except WebDriverException as exc:
-            logger.error("Falha ao acessar o Snyk para %s: %s", package_name, exc)
+        if not self._load_package_page(url, package_name):
             return SnykPackageData()
 
         latest, total = self._read_vulnerability_counts(package_name)
@@ -142,6 +149,51 @@ class SnykScraper:
         runs de ``-``, ``_`` e ``.`` como um único ``-``.
         """
         return NAME_SEPARATORS_PATTERN.sub("-", package_name).lower()
+
+    def _load_package_page(self, url: str, package_name: str) -> bool:
+        """Carrega a página do pacote, repetindo em falhas temporárias.
+
+        Só insiste quando faz sentido: pacote ausente do catálogo é
+        reconhecido pelo título da página e devolvido de imediato, sem
+        consumir tentativas.
+        """
+        for attempt in range(1, self._attempts + 1):
+            try:
+                self._driver.get(url)
+            except WebDriverException as exc:
+                logger.error("Falha ao acessar o Snyk para %s: %s", package_name, exc)
+                return False
+
+            if self._package_is_missing():
+                logger.info("Pacote não catalogado no portal Snyk: %s", package_name)
+                return False
+
+            try:
+                self._wait_for_package_page()
+                return True
+            except TimeoutException:
+                if attempt >= self._attempts:
+                    break
+                wait = self._retry_wait * attempt
+                logger.info(
+                    "Página de %s não carregou (tentativa %d de %d); repetindo em %.0fs",
+                    package_name,
+                    attempt,
+                    self._attempts,
+                    wait,
+                )
+                time.sleep(wait)
+
+        logger.warning(
+            "Não foi possível ler a página de %s após %d tentativas",
+            package_name,
+            self._attempts,
+        )
+        return False
+
+    def _package_is_missing(self) -> bool:
+        """Reconhece a página de pacote inexistente pelo título."""
+        return NOT_FOUND_TITLE in (self._driver.title or "").lower()
 
     def _wait_for_package_page(self) -> None:
         WebDriverWait(self._driver, self._timeout).until(

@@ -1,12 +1,12 @@
 """Testes do cliente da API pública do PyPI."""
 
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import requests
 
-from src.pypi_client import fetch_package_info
+from src.pypi_client import PyPiClient
 
 
 def fake_response(payload):
@@ -18,9 +18,19 @@ def fake_response(payload):
 
 
 def fetch_with_payload(payload, package_name="flask"):
-    with patch("src.pypi_client.requests.get", return_value=fake_response(payload)) as get:
-        resultado = fetch_package_info(package_name)
-    return resultado, get
+    """Consulta o cliente com uma sessão falsa, sem tocar na rede."""
+    session = Mock()
+    session.get.return_value = fake_response(payload)
+
+    resultado = PyPiClient(session=session).fetch(package_name)
+    return resultado, session.get
+
+
+def fetch_with_error(erro, package_name="inexistente"):
+    session = Mock()
+    session.get.side_effect = erro
+
+    return PyPiClient(session=session).fetch(package_name)
 
 
 class TestCamposBasicos:
@@ -150,6 +160,29 @@ class TestVulnerabilidades:
         assert resultado["vulnerabilities"] is None
 
 
+class TestRepeticaoAutomatica:
+    """Falhas temporárias da API não podem virar buraco no relatório."""
+
+    def test_configura_repeticao_para_falhas_temporarias(self):
+        adaptador = PyPiClient(attempts=3, backoff=0.5)._session.get_adapter("https://pypi.org")
+        politica = adaptador.max_retries
+
+        assert politica.total == 2  # 3 tentativas = 1 original + 2 repetições
+        assert politica.backoff_factor == 0.5
+
+    @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+    def test_repete_nos_status_temporarios(self, status):
+        adaptador = PyPiClient()._session.get_adapter("https://pypi.org")
+
+        assert status in adaptador.max_retries.status_forcelist
+
+    def test_nao_repete_em_404(self):
+        """Pacote inexistente não passa a existir por insistência."""
+        adaptador = PyPiClient()._session.get_adapter("https://pypi.org")
+
+        assert 404 not in adaptador.max_retries.status_forcelist
+
+
 class TestTratamentoDeErros:
     @pytest.mark.parametrize(
         "erro",
@@ -161,8 +194,7 @@ class TestTratamentoDeErros:
     )
     def test_falhas_de_rede_devolvem_campos_vazios(self, erro):
         """Uma falha na API não pode interromper a geração do relatório."""
-        with patch("src.pypi_client.requests.get", side_effect=erro):
-            resultado = fetch_package_info("inexistente")
+        resultado = fetch_with_error(erro)
 
         assert resultado == {
             "pypi_version": None,
@@ -175,8 +207,6 @@ class TestTratamentoDeErros:
     def test_retorno_de_falha_tem_as_mesmas_chaves_do_sucesso(self):
         """Chaves diferentes entre sucesso e falha quebrariam quem consome."""
         sucesso, _ = fetch_with_payload({"info": {}, "releases": {}, "vulnerabilities": []})
-
-        with patch("src.pypi_client.requests.get", side_effect=requests.Timeout()):
-            falha = fetch_package_info("inexistente")
+        falha = fetch_with_error(requests.Timeout())
 
         assert sucesso.keys() == falha.keys()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.models import DependencyInfo
+
+logger = logging.getLogger("dependency_report.report")
 
 # Limiar definido no enunciado: dependências abaixo dele são destacadas.
 SCORE_THRESHOLD = 65
@@ -135,6 +138,7 @@ def _is_below_threshold(score: Optional[float]) -> bool:
     try:
         return float(score) < SCORE_THRESHOLD
     except (TypeError, ValueError):
+        logger.warning("Score em formato inesperado, linha não destacada: %r", score)
         return False
 
 

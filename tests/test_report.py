@@ -167,6 +167,14 @@ class TestDestaqueVisual:
 
         assert sheet.cell(row=2, column=1).fill.start_color.rgb == SEM_PREENCHIMENTO
 
+    def test_score_invalido_nao_destaca_e_registra_aviso(self, tmp_path, caplog):
+        """Formato inesperado não pode passar despercebido."""
+        dependencia = DependencyInfo(name="estranho", snyk_score="noventa")
+        sheet = gerar(tmp_path, [dependencia])
+
+        assert sheet.cell(row=2, column=1).fill.start_color.rgb == SEM_PREENCHIMENTO
+        assert "formato inesperado" in caplog.text.lower()
+
     def test_score_ausente_nao_e_destacado(self, tmp_path):
         """Sem score não há como julgar o pacote: não deve parecer inseguro."""
         sheet = gerar(tmp_path, [DependencyInfo(name="desconhecido", snyk_score=None)])

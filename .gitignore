@@ -16,10 +16,11 @@ env/
 # Logs
 *.log
 
-# Artefatos de teste
+# Artefatos de teste e de análise estática
 testes.html
 assets/
 .pytest_cache/
+.ruff_cache/
 
 # Relatórios gerados pela aplicação, exceto o exemplo versionado
 *.xlsx

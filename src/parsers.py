@@ -6,7 +6,7 @@ import logging
 import re
 import tomllib
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger("dependency_report.parsers")
 
@@ -21,9 +21,9 @@ REQUIREMENT_PATTERN = re.compile(
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
-def parse_requirements(path: Path) -> Dict[str, Optional[str]]:
+def parse_requirements(path: Path) -> dict[str, str | None]:
     """Lê as dependências declaradas em um `requirements.txt`."""
-    dependencies: Dict[str, Optional[str]] = {}
+    dependencies: dict[str, str | None] = {}
 
     with path.open("r", encoding="utf-8") as handler:
         for line_number, line in enumerate(handler, start=1):
@@ -43,7 +43,7 @@ def parse_requirements(path: Path) -> Dict[str, Optional[str]]:
     return dependencies
 
 
-def parse_pyproject(path: Path) -> Dict[str, Optional[str]]:
+def parse_pyproject(path: Path) -> dict[str, str | None]:
     """Lê as dependências de um `pyproject.toml`.
 
     Cobre tanto o formato padrão (PEP 621, em `[project]`) quanto o do Poetry
@@ -52,7 +52,7 @@ def parse_pyproject(path: Path) -> Dict[str, Optional[str]]:
     with path.open("rb") as handler:
         content = tomllib.load(handler)
 
-    dependencies: Dict[str, Optional[str]] = {}
+    dependencies: dict[str, str | None] = {}
     dependencies.update(_extract_dependencies(content.get("project", {}).get("dependencies")))
 
     poetry = content.get("tool", {}).get("poetry", {})
@@ -68,7 +68,7 @@ def _strip_annotations(line: str) -> str:
     return without_marker.strip()
 
 
-def _parse_requirement(requirement: str) -> Optional[tuple[str, Optional[str]]]:
+def _parse_requirement(requirement: str) -> tuple[str, str | None] | None:
     """Separa nome e especificador de versão, ou `None` se não for um requisito."""
     match = REQUIREMENT_PATTERN.match(requirement)
     if match is None:
@@ -80,7 +80,7 @@ def _parse_requirement(requirement: str) -> Optional[tuple[str, Optional[str]]]:
     return match.group("name"), WHITESPACE_PATTERN.sub("", version) if version else None
 
 
-def _extract_dependencies(raw_dependencies: Any) -> Dict[str, Optional[str]]:
+def _extract_dependencies(raw_dependencies: Any) -> dict[str, str | None]:
     """Normaliza os dois formatos de declaração usados em `pyproject.toml`.
 
     O PEP 621 usa uma lista de strings (`["flask>=3.0"]`), enquanto o Poetry
@@ -94,8 +94,8 @@ def _extract_dependencies(raw_dependencies: Any) -> Dict[str, Optional[str]]:
     return {}
 
 
-def _extract_from_table(raw_dependencies: Dict[str, Any]) -> Dict[str, Optional[str]]:
-    dependencies: Dict[str, Optional[str]] = {}
+def _extract_from_table(raw_dependencies: dict[str, Any]) -> dict[str, str | None]:
+    dependencies: dict[str, str | None] = {}
 
     for name, metadata in raw_dependencies.items():
         # O Poetry declara a versão do interpretador junto das dependências.
@@ -112,8 +112,8 @@ def _extract_from_table(raw_dependencies: Dict[str, Any]) -> Dict[str, Optional[
     return dependencies
 
 
-def _extract_from_list(raw_dependencies: list) -> Dict[str, Optional[str]]:
-    dependencies: Dict[str, Optional[str]] = {}
+def _extract_from_list(raw_dependencies: list) -> dict[str, str | None]:
+    dependencies: dict[str, str | None] = {}
 
     for entry in raw_dependencies:
         if not isinstance(entry, str):

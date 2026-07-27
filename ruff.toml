@@ -1,0 +1,35 @@
+# Configuração do Ruff (linter e formatador).
+#
+# As regras são declaradas explicitamente em vez de aceitar o padrão da
+# ferramenta: o conjunto padrão muda entre versões, e isso faria a integração
+# contínua passar hoje e falhar amanhã sem que nada no código mudasse.
+#
+# Uso:
+#   python -m ruff check .          verifica
+#   python -m ruff check . --fix    corrige o que é seguro corrigir
+#   python -m ruff format .         formata
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+    "E",    # pycodestyle: espaçamento, indentação, comprimento de linha
+    "W",    # pycodestyle: avisos de espaço em branco
+    "F",    # pyflakes: variáveis e imports não usados, nomes indefinidos
+    "I",    # isort: ordenação dos imports
+    "UP",   # pyupgrade: sintaxe moderna disponível na versão alvo
+    "B",    # flake8-bugbear: armadilhas comuns
+    "SIM",  # flake8-simplify: simplificações legíveis
+    "DTZ",  # flake8-datetimez: datas sem fuso horário
+    "BLE",  # flake8-blind-except: captura genérica de exceção
+    "RUF",  # regras do próprio Ruff
+]
+
+[lint.per-file-ignores]
+# Nos testes, datas fixas sem fuso são intencionais: servem de valor de
+# entrada previsível, não representam um instante real.
+"tests/*" = ["DTZ001"]
+
+[format]
+quote-style = "double"

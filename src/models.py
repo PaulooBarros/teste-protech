@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
@@ -22,13 +21,13 @@ class DependencyInfo:
     """
 
     name: str
-    requested_version: Optional[str] = None
-    pypi_version: Optional[str] = None
-    description: Optional[str] = None
-    license: Optional[str] = None
-    last_release_date: Optional[datetime] = None
-    snyk_score: Optional[int] = None
-    vulnerabilities_total: Optional[int] = None
-    vulnerabilities_latest: Optional[int] = None
-    vulnerabilities_pypi: Optional[int] = None
-    notes: Optional[str] = None
+    requested_version: str | None = None
+    pypi_version: str | None = None
+    description: str | None = None
+    license: str | None = None
+    last_release_date: datetime | None = None
+    snyk_score: int | None = None
+    vulnerabilities_total: int | None = None
+    vulnerabilities_latest: int | None = None
+    vulnerabilities_pypi: int | None = None
+    notes: str | None = None

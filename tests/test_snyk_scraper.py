@@ -115,10 +115,12 @@ class TestCarregamentoDaPagina:
         scraper = SnykScraper(driver=driver, attempts=3, retry_wait=0)
         tentativas = [TimeoutException(), None]
 
-        with patch.object(SnykScraper, "_wait_for_package_page", side_effect=tentativas):
-            with patch.object(SnykScraper, "_read_score", return_value=90):
-                with patch.object(SnykScraper, "_read_vulnerability_counts", return_value=(0, 6)):
-                    dados = scraper.fetch("flask")
+        with (
+            patch.object(SnykScraper, "_wait_for_package_page", side_effect=tentativas),
+            patch.object(SnykScraper, "_read_score", return_value=90),
+            patch.object(SnykScraper, "_read_vulnerability_counts", return_value=(0, 6)),
+        ):
+            dados = scraper.fetch("flask")
 
         assert driver.get.call_count == 2
         assert dados == SnykPackageData(score=90, vulnerabilities_total=6, vulnerabilities_latest=0)
@@ -127,9 +129,11 @@ class TestCarregamentoDaPagina:
         """Espera progressiva: insistir de imediato tende a falhar de novo."""
         scraper = SnykScraper(driver=fake_driver(), attempts=4, retry_wait=2.0)
 
-        with patch.object(SnykScraper, "_wait_for_package_page", side_effect=TimeoutException()):
-            with patch("src.snyk_scraper.time.sleep") as sleep:
-                scraper.fetch("flask")
+        with (
+            patch.object(SnykScraper, "_wait_for_package_page", side_effect=TimeoutException()),
+            patch("src.snyk_scraper.time.sleep") as sleep,
+        ):
+            scraper.fetch("flask")
 
         assert [chamada.args[0] for chamada in sleep.call_args_list] == [2.0, 4.0, 6.0]
 

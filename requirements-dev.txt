@@ -5,3 +5,6 @@ pytest>=8.0.0
 # Gera um relatório de testes em HTML, útil para visualizar o resultado
 # sem depender da saída do terminal.
 pytest-html>=4.1.0
+
+# Linter e formatador. As regras ficam em ruff.toml.
+ruff>=0.16.0

@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from src.logger import configure_logger
 from src.models import DependencyInfo
@@ -37,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_dependencies(source_path: Path, logger: logging.Logger) -> Dict[str, Optional[str]]:
+def load_dependencies(source_path: Path, logger: logging.Logger) -> dict[str, str | None]:
     """Lê as dependências do arquivo de entrada."""
     if not source_path.exists():
         raise SystemExit(f"Arquivo de entrada não encontrado: {source_path}")
@@ -56,7 +55,7 @@ def load_dependencies(source_path: Path, logger: logging.Logger) -> Dict[str, Op
 
 def collect_dependency(
     name: str,
-    requested_version: Optional[str],
+    requested_version: str | None,
     pypi: PyPiClient,
     scraper: SnykScraper,
     logger: logging.Logger,
@@ -71,7 +70,7 @@ def collect_dependency(
     try:
         package_info = pypi.fetch(name)
         snyk_data = scraper.fetch(name)
-    except Exception as exc:  # noqa: BLE001 - nenhuma dependência pode abortar o relatório
+    except Exception as exc:
         logger.exception("Erro inesperado ao processar %s", name)
         return DependencyInfo(name=name, requested_version=requested_version, notes=str(exc))
 
@@ -95,7 +94,7 @@ def main() -> None:
 
     dependencies = load_dependencies(Path(args.input), logger)
 
-    collected: List[DependencyInfo] = []
+    collected: list[DependencyInfo] = []
     scraper = SnykScraper(
         driver_path=Path(args.driver) if args.driver else None,
         headless=not args.show_browser,

@@ -1,5 +1,7 @@
 # Dependências Python e Relatório de Segurança
 
+[![CI](https://github.com/PaulooBarros/teste-protech/actions/workflows/ci.yml/badge.svg)](https://github.com/PaulooBarros/teste-protech/actions/workflows/ci.yml)
+
 Este projeto lê dependências Python de `requirements.txt` ou `pyproject.toml`, coleta informações do PyPI e do portal Snyk usando Selenium, e gera uma planilha Excel com os resultados.
 
 ## Estrutura
@@ -169,6 +171,30 @@ PyPI e a geração da planilha — inclusive os limites do destaque visual
 (scores 64, 65 e ausente). Não há testes de navegador: o scraping depende do
 HTML de um site externo, que muda sem aviso, então essa parte é validada
 manualmente.
+
+## Qualidade de código
+
+O projeto usa o [Ruff](https://docs.astral.sh/ruff/) como linter e formatador:
+
+```bash
+python -m ruff check .        # verifica
+python -m ruff check . --fix  # corrige o que é seguro corrigir
+python -m ruff format .       # formata
+```
+
+As regras ficam declaradas em `ruff.toml`, em vez de depender do conjunto
+padrão da ferramenta — esse padrão muda entre versões, e isso faria a
+integração contínua passar hoje e falhar amanhã sem que nada no código
+mudasse.
+
+## Integração contínua
+
+O `.github/workflows/ci.yml` executa o linter e a suíte de testes a cada
+push, nas versões 3.11, 3.12 e 3.13 do Python. A 3.11 é o mínimo suportado
+por causa do `tomllib`; as demais confirmam que nada quebra nas seguintes.
+
+O CI não precisa de Chrome, porque a suíte não abre navegador — roda em
+segundos.
 
 ## Observações
 

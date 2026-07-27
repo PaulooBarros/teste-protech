@@ -1,6 +1,6 @@
 """Testes do cliente da API pública do PyPI."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -77,7 +77,10 @@ class TestLicenca:
     def test_recorre_aos_classificadores(self):
         info = {
             "license": "",
-            "classifiers": ["Programming Language :: Python", "License :: OSI Approved :: MIT License"],
+            "classifiers": [
+                "Programming Language :: Python",
+                "License :: OSI Approved :: MIT License",
+            ],
         }
         resultado, _ = fetch_with_payload({"info": info, "releases": {}})
 
@@ -85,8 +88,9 @@ class TestLicenca:
 
     def test_descarta_texto_integral_da_licenca(self):
         """Alguns pacotes despejam a licença inteira no campo `license`."""
+        texto_integral = "Copyright (c) 2024. " + "Permission is hereby granted. " * 10
         info = {
-            "license": "Copyright (c) 2024. " + "Permission is hereby granted, free of charge. " * 10,
+            "license": texto_integral,
             "classifiers": ["License :: OSI Approved :: Apache Software License"],
         }
         resultado, _ = fetch_with_payload({"info": info, "releases": {}})
@@ -108,7 +112,7 @@ class TestDataDaUltimaPublicacao:
         }
         resultado, _ = fetch_with_payload({"info": {}, "releases": releases})
 
-        assert resultado["last_release_date"] == datetime(2024, 6, 15, 12, 30, tzinfo=timezone.utc)
+        assert resultado["last_release_date"] == datetime(2024, 6, 15, 12, 30, tzinfo=UTC)
 
     def test_ignora_datas_em_formato_invalido(self):
         releases = {
@@ -117,7 +121,7 @@ class TestDataDaUltimaPublicacao:
         }
         resultado, _ = fetch_with_payload({"info": {}, "releases": releases})
 
-        assert resultado["last_release_date"] == datetime(2024, 6, 15, 12, 30, tzinfo=timezone.utc)
+        assert resultado["last_release_date"] == datetime(2024, 6, 15, 12, 30, tzinfo=UTC)
 
     def test_sem_releases_devolve_none(self):
         resultado, _ = fetch_with_payload({"info": {}, "releases": {}})

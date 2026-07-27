@@ -7,14 +7,13 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from selenium import webdriver
 from selenium.common.exceptions import (
     ElementClickInterceptedException,
     NoSuchElementException,
-    WebDriverException,
     TimeoutException,
+    WebDriverException,
 )
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -50,9 +49,9 @@ class SnykPackageData:
     vez de interromper a execução.
     """
 
-    score: Optional[int] = None
-    vulnerabilities_total: Optional[int] = None
-    vulnerabilities_latest: Optional[int] = None
+    score: int | None = None
+    vulnerabilities_total: int | None = None
+    vulnerabilities_latest: int | None = None
 
 
 class SnykScraper:
@@ -69,13 +68,13 @@ class SnykScraper:
 
     def __init__(
         self,
-        driver_path: Optional[Path] = None,
+        driver_path: Path | None = None,
         timeout: int = 15,
         filter_timeout: int = 5,
         headless: bool = True,
         attempts: int = 3,
         retry_wait: float = 2.0,
-        driver: Optional[webdriver.Chrome] = None,
+        driver: webdriver.Chrome | None = None,
     ) -> None:
         self._driver = driver
         self._driver_path = driver_path
@@ -85,7 +84,7 @@ class SnykScraper:
         self._attempts = attempts
         self._retry_wait = retry_wait
 
-    def __enter__(self) -> "SnykScraper":
+    def __enter__(self) -> SnykScraper:
         self.start()
         return self
 
@@ -200,7 +199,7 @@ class SnykScraper:
             EC.presence_of_element_located((By.CSS_SELECTOR, SCORE_SELECTOR))
         )
 
-    def _read_score(self) -> Optional[int]:
+    def _read_score(self) -> int | None:
         """Lê o Package Health Score, exibido no formato ``90/100``."""
         try:
             raw_score = self._driver.find_element(By.CSS_SELECTOR, SCORE_SELECTOR).text
@@ -214,7 +213,7 @@ class SnykScraper:
             return None
         return int(match.group(1))
 
-    def _read_vulnerability_counts(self, package_name: str) -> tuple[Optional[int], Optional[int]]:
+    def _read_vulnerability_counts(self, package_name: str) -> tuple[int | None, int | None]:
         """Retorna (vulnerabilidades na versão atual, total do pacote).
 
         A tabela do portal vem filtrada por padrão pelo controle "Show only
@@ -239,7 +238,7 @@ class SnykScraper:
 
         return latest, self._count_after_filter_removal(latest)
 
-    def _read_empty_state(self) -> Optional[str]:
+    def _read_empty_state(self) -> str | None:
         try:
             return self._driver.find_element(By.CSS_SELECTOR, EMPTY_STATE_SELECTOR).text
         except NoSuchElementException:

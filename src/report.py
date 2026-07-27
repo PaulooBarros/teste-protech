@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -50,7 +51,7 @@ class Column:
     numeric: bool = False
 
 
-def _format_date(moment: Optional[datetime]) -> Optional[str]:
+def _format_date(moment: datetime | None) -> str | None:
     """Formata a data como texto.
 
     O Excel não aceita datetime com fuso horário, e o formato ISO curto
@@ -67,7 +68,12 @@ COLUMNS: Sequence[Column] = (
     Column("Licença", lambda item: item.license, width=20),
     Column("Última publicação", lambda item: _format_date(item.last_release_date), width=17),
     Column("Score Snyk", lambda item: item.snyk_score, width=11, numeric=True),
-    Column("Vulnerabilidades (total)", lambda item: item.vulnerabilities_total, width=15, numeric=True),
+    Column(
+        "Vulnerabilidades (total)",
+        lambda item: item.vulnerabilities_total,
+        width=15,
+        numeric=True,
+    ),
     Column(
         "Vulnerabilidades (versão atual)",
         lambda item: item.vulnerabilities_latest,
@@ -84,7 +90,7 @@ COLUMNS: Sequence[Column] = (
 )
 
 
-def build_report(dependencies: List[DependencyInfo], destination: Path) -> None:
+def build_report(dependencies: list[DependencyInfo], destination: Path) -> None:
     """Grava a planilha com as dependências e seus dados coletados."""
     workbook = Workbook()
     sheet = workbook.active
@@ -126,7 +132,7 @@ def _write_row(sheet: Worksheet, row_index: int, dependency: DependencyInfo) -> 
             cell.font = ALERT_FONT
 
 
-def _is_below_threshold(score: Optional[float]) -> bool:
+def _is_below_threshold(score: float | None) -> bool:
     """Indica se o score exige destaque.
 
     Um pacote sem score não é destacado: a informação está ausente, o que não
@@ -160,7 +166,10 @@ def _write_legend(workbook: Workbook) -> None:
 
     descriptions = [
         ("Nome", "Nome da dependência conforme declarado no arquivo de entrada."),
-        ("Versão requisitada", "Especificador declarado no projeto, como \">=3.0\" ou \"==2.6.1\"."),
+        (
+            "Versão requisitada",
+            "Especificador declarado no projeto, como '>=3.0' ou '==2.6.1'.",
+        ),
         ("Última versão PyPI", "Versão mais recente publicada no PyPI."),
         ("Descrição", "Resumo do pacote informado pelo PyPI."),
         ("Licença", "Licença declarada no PyPI."),

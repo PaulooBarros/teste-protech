@@ -1,0 +1,43 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  qualidade:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Uma versão falhar não cancela as outras: é útil saber se o problema
+      # atinge todas ou só uma.
+      fail-fast: false
+      matrix:
+        # 3.11 é o mínimo suportado, por causa do `tomllib` da biblioteca
+        # padrão. As demais garantem que nada quebrou nas versões seguintes.
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Verificar estilo e erros comuns
+        run: python -m ruff check .
+
+      - name: Rodar os testes
+        run: python -m pytest -q
+
+# A suíte não abre navegador: o scraping do Snyk depende do HTML de um site
+# externo, que muda sem aviso, e um teste com HTML congelado passaria mesmo
+# depois do site mudar. Por isso o CI não precisa de Chrome e roda em segundos.

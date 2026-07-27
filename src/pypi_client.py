@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -46,7 +46,7 @@ class PyPiClient:
 
     def __init__(
         self,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
         timeout: int = 10,
         attempts: int = 3,
         backoff: float = 0.5,
@@ -66,7 +66,7 @@ class PyPiClient:
         session.mount("https://", HTTPAdapter(max_retries=retry))
         return session
 
-    def __enter__(self) -> "PyPiClient":
+    def __enter__(self) -> PyPiClient:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> bool:
@@ -76,7 +76,7 @@ class PyPiClient:
     def close(self) -> None:
         self._session.close()
 
-    def fetch(self, package_name: str) -> Dict[str, Any]:
+    def fetch(self, package_name: str) -> dict[str, Any]:
         """Retorna os dados públicos de um pacote.
 
         Falhas de rede não interrompem o relatório: viram campos vazios, com
@@ -102,7 +102,7 @@ class PyPiClient:
         }
 
 
-def _count_vulnerabilities(payload: Dict) -> Optional[int]:
+def _count_vulnerabilities(payload: dict) -> int | None:
     """Conta as vulnerabilidades que o PyPI reporta para a versão mais recente.
 
     A origem é a base OSV, independente do Snyk, o que permite cruzar as duas
@@ -113,7 +113,7 @@ def _count_vulnerabilities(payload: Dict) -> Optional[int]:
     return len(vulnerabilities) if isinstance(vulnerabilities, list) else None
 
 
-def _extract_license(info: Dict) -> Optional[str]:
+def _extract_license(info: dict) -> str | None:
     """Descobre a licença testando as fontes na ordem de confiabilidade.
 
     O campo `license` está obsoleto: pacotes modernos usam `license_expression`
@@ -136,7 +136,7 @@ def _extract_license(info: Dict) -> Optional[str]:
     return None
 
 
-def _extract_last_release_date(releases: Dict[str, list]) -> Optional[datetime]:
+def _extract_last_release_date(releases: dict[str, list]) -> datetime | None:
     last_date = None
     for release_files in releases.values():
         for release in release_files:

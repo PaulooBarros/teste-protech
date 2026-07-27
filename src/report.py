@@ -90,6 +90,56 @@ COLUMNS: Sequence[Column] = (
 )
 
 
+@dataclass(frozen=True)
+class ReportSummary:
+    """Números consolidados de uma execução.
+
+    Contagens e somas são coisas diferentes: `packages_at_risk` responde
+    "quantos pacotes preciso olhar", enquanto `current_vulnerabilities`
+    responde "quantos problemas existem no total". Um único pacote muito
+    vulnerável distorceria o primeiro número se fossem confundidos.
+    """
+
+    analyzed: int
+    below_threshold: int
+    without_score: int
+    packages_at_risk: int
+    current_vulnerabilities: int
+    historical_vulnerabilities: int
+    source_disagreements: int
+    collection_failures: int
+
+    @classmethod
+    def from_dependencies(cls, dependencies: list[DependencyInfo]) -> ReportSummary:
+        return cls(
+            analyzed=len(dependencies),
+            below_threshold=sum(
+                1 for item in dependencies if _is_below_threshold(item.snyk_score)
+            ),
+            without_score=sum(1 for item in dependencies if item.snyk_score is None),
+            packages_at_risk=sum(
+                1 for item in dependencies if (item.vulnerabilities_latest or 0) > 0
+            ),
+            current_vulnerabilities=sum(item.vulnerabilities_latest or 0 for item in dependencies),
+            historical_vulnerabilities=sum(
+                item.vulnerabilities_total or 0 for item in dependencies
+            ),
+            source_disagreements=sum(1 for item in dependencies if _sources_disagree(item)),
+            collection_failures=sum(1 for item in dependencies if item.notes),
+        )
+
+
+def _sources_disagree(dependency: DependencyInfo) -> bool:
+    """Indica se Snyk e OSV divergem sobre a versão atual.
+
+    Só faz sentido comparar quando as duas fontes responderam: um dado
+    ausente não é discordância.
+    """
+    snyk = dependency.vulnerabilities_latest
+    osv = dependency.vulnerabilities_pypi
+    return snyk is not None and osv is not None and snyk != osv
+
+
 def build_report(dependencies: list[DependencyInfo], destination: Path) -> None:
     """Grava a planilha com as dependências e seus dados coletados."""
     workbook = Workbook()
@@ -101,6 +151,7 @@ def build_report(dependencies: list[DependencyInfo], destination: Path) -> None:
         _write_row(sheet, FIRST_DATA_ROW + offset, dependency)
 
     _apply_layout(sheet, len(dependencies))
+    _write_summary(workbook, ReportSummary.from_dependencies(dependencies))
     _write_legend(workbook)
     workbook.save(destination)
 
@@ -158,6 +209,45 @@ def _apply_layout(sheet: Worksheet, row_count: int) -> None:
     sheet.auto_filter.ref = f"A{HEADER_ROW}:{last_column}{HEADER_ROW + row_count}"
 
 
+def _write_summary(workbook: Workbook, summary: ReportSummary) -> None:
+    """Cria a aba com a visão geral da execução.
+
+    Fica depois de "Dependências" de propósito: o dado exigido é a lista, e
+    quem abre o arquivo deve encontrá-la primeiro.
+    """
+    sheet = workbook.create_sheet("Resumo", index=1)
+    sheet.column_dimensions["A"].width = 46
+    sheet.column_dimensions["B"].width = 12
+
+    for column, title in enumerate(("Métrica", "Valor"), start=1):
+        cell = sheet.cell(row=1, column=column, value=title)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGNMENT
+
+    # `alert` marca as linhas que pedem atenção quando o valor não é zero.
+    metrics = [
+        ("Dependências analisadas", summary.analyzed, False),
+        (f"Com score abaixo de {SCORE_THRESHOLD}", summary.below_threshold, True),
+        ("Sem score no portal Snyk", summary.without_score, False),
+        ("Pacotes com vulnerabilidade na versão atual", summary.packages_at_risk, True),
+        ("Vulnerabilidades na versão atual (soma)", summary.current_vulnerabilities, True),
+        ("Vulnerabilidades no histórico (soma)", summary.historical_vulnerabilities, False),
+        ("Divergências entre Snyk e OSV", summary.source_disagreements, False),
+        ("Falhas na coleta", summary.collection_failures, True),
+    ]
+
+    for row, (label, value, alert) in enumerate(metrics, start=2):
+        name_cell = sheet.cell(row=row, column=1, value=label)
+        value_cell = sheet.cell(row=row, column=2, value=value)
+        value_cell.alignment = NUMBER_ALIGNMENT
+
+        if alert and value:
+            for cell in (name_cell, value_cell):
+                cell.fill = ALERT_FILL
+                cell.font = ALERT_FONT
+
+
 def _write_legend(workbook: Workbook) -> None:
     """Cria uma aba explicando as colunas e o critério de destaque."""
     sheet = workbook.create_sheet("Legenda")
@@ -187,6 +277,10 @@ def _write_legend(workbook: Workbook) -> None:
             "as bases avaliam de forma diferente quais versões são afetadas.",
         ),
         ("Notas", "Motivo de eventual falha na coleta dos dados da dependência."),
+        (
+            "Aba Resumo",
+            "Visão geral da execução: totais, pacotes em risco e falhas de coleta.",
+        ),
     ]
 
     header = sheet.cell(row=1, column=1, value="Coluna")

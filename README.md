@@ -12,6 +12,7 @@ Este projeto lê dependências Python de `requirements.txt` ou `pyproject.toml`,
 - `src/models.py`: modelos de dados
 - `src/logger.py`: configuração de logs
 - `tests/`: testes automatizados
+- `examples/`: arquivo de entrada de exemplo e a planilha resultante
 
 ## Pré-requisitos
 
@@ -44,6 +45,21 @@ python -m src.main --input pyproject.toml --output report.xlsx
 > A aplicação é executada como módulo (`-m src.main`). Chamar
 > `python src/main.py` falha com `ModuleNotFoundError`, porque nesse modo o
 > Python coloca `src/` no `sys.path` em vez da raiz do projeto.
+
+O parser é escolhido pela extensão do arquivo, então nomes como
+`requirements-dev.txt` também funcionam.
+
+## Exemplo
+
+A pasta `examples/` traz um arquivo de entrada e a planilha gerada a partir
+dele, para consultar o resultado sem precisar executar a aplicação:
+
+```bash
+python -m src.main --input examples/requirements-exemplo.txt --output examples/report.xlsx
+```
+
+Ele inclui de propósito o `pycrypto`, um pacote abandonado com score 44, para
+demonstrar o destaque visual.
 
 ### Opções
 

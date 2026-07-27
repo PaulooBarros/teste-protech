@@ -14,9 +14,11 @@ from src.pypi_client import fetch_package_info
 from src.report import build_report
 from src.snyk_scraper import SnykScraper
 
-PARSERS_BY_FILENAME = {
-    "requirements.txt": parse_requirements,
-    "pyproject.toml": parse_pyproject,
+# O parser é escolhido pela extensão, e não pelo nome exato do arquivo:
+# nomes como `requirements-dev.txt` são comuns e devem funcionar.
+PARSERS_BY_SUFFIX = {
+    ".txt": parse_requirements,
+    ".toml": parse_pyproject,
 }
 
 
@@ -40,10 +42,12 @@ def load_dependencies(source_path: Path, logger: logging.Logger) -> Dict[str, Op
     if not source_path.exists():
         raise SystemExit(f"Arquivo de entrada não encontrado: {source_path}")
 
-    parser = PARSERS_BY_FILENAME.get(source_path.name)
+    parser = PARSERS_BY_SUFFIX.get(source_path.suffix.lower())
     if parser is None:
-        suportados = ", ".join(PARSERS_BY_FILENAME)
-        raise SystemExit(f"Arquivo de entrada inválido: {source_path}. Use um de: {suportados}")
+        suportados = ", ".join(PARSERS_BY_SUFFIX)
+        raise SystemExit(
+            f"Formato não suportado: {source_path.name}. Use um arquivo {suportados}."
+        )
 
     dependencies = parser(source_path)
     logger.info("%d dependências encontradas em %s", len(dependencies), source_path)

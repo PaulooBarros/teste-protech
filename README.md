@@ -45,11 +45,6 @@ python -m pip install -r requirements.txt
 python -m src.main --input requirements.txt --output report.xlsx
 ```
 
-3. O mesmo vale para `pyproject.toml`:
-
-```bash
-python -m src.main --input pyproject.toml --output report.xlsx
-```
 
 > A aplicação é executada como módulo (`-m src.main`). Chamar
 > `python src/main.py` falha com `ModuleNotFoundError`, porque nesse modo o

@@ -4,6 +4,12 @@
 
 Este projeto lê dependências Python de `requirements.txt` ou `pyproject.toml`, coleta informações do PyPI e do portal Snyk usando Selenium, e gera uma planilha Excel com os resultados.
 
+>  **Exemplo real da planilha gerada** Abra
+> [`examples/report.xlsx`](examples/report.xlsx) — é um exemplo real gerado
+> pela aplicação, com a linha do `pycrypto` destacada em vermelho por ter
+> score 44. Detalhes na seção [Exemplo da planilha
+> gerada](#exemplo-da-planilha-gerada).
+
 ## Estrutura
 
 - `src/main.py`: ponto de entrada e orquestração da coleta
@@ -14,7 +20,8 @@ Este projeto lê dependências Python de `requirements.txt` ou `pyproject.toml`,
 - `src/models.py`: modelos de dados
 - `src/logger.py`: configuração de logs
 - `tests/`: testes automatizados
-- `examples/`: arquivo de entrada de exemplo e a planilha resultante
+- `examples/report.xlsx`: **exemplo da planilha gerada**, pronto para abrir
+- `examples/`: também traz arquivos de entrada nos dois formatos aceitos
 
 ## Pré-requisitos
 
@@ -67,25 +74,52 @@ A extensão é lida do caminho da URL, ignorando a query string — portanto
 `.../requirements.txt?raw=1` continua sendo tratado como `.txt`. Arquivos
 acima de 5 MB são recusados.
 
-## Exemplo
+## Exemplo da planilha gerada
 
-A pasta `examples/` traz arquivos de entrada nos dois formatos aceitos e a
-planilha gerada, para consultar o resultado sem precisar executar a aplicação.
+**O arquivo [`examples/report.xlsx`](examples/report.xlsx) já está no
+repositório, pronto para abrir** — não é preciso executar nada para ver o
+resultado.
+
+Ele tem três abas:
+
+| Aba | Conteúdo |
+|---|---|
+| **Dependências** | uma linha por pacote, com as onze colunas coletadas |
+| **Resumo** | visão geral: totais, pacotes em risco e falhas de coleta |
+| **Legenda** | o que significa cada coluna e o critério do destaque |
+
+O conteúdo foi escolhido para demonstrar o destaque visual exigido no
+requisito (c):
+
+| Pacote | Score | |
+|---|---|---|
+| selenium | 97 | |
+| requests | 91 | |
+| flask | 90 | |
+| django | 85 | |
+| openpyxl | 65 | exatamente no limite — **não** destacado |
+| **pycrypto** | **44** | **linha inteira em vermelho** |
+
+O `pycrypto` é um pacote abandonado, incluído de propósito. O `openpyxl`, em
+65, exercita a fronteira: o enunciado pede destaque para score *inferior* a
+65, então ele fica de fora.
+
+### Arquivos de entrada de exemplo
+
+A mesma pasta traz entradas nos dois formatos aceitos, caso queira gerar a
+planilha você mesmo:
 
 ```bash
+# requirements.txt — foi o que gerou o examples/report.xlsx versionado
 python -m src.main --input examples/requirements-exemplo.txt --output examples/report.xlsx
-```
 
-Os dois exemplos incluem de propósito o `pycrypto`, um pacote abandonado com
-score 44, para demonstrar o destaque visual.
-
-Para verificar o outro formato de entrada, o `examples/pyproject-exemplo.toml`
-declara dependências tanto no padrão da PEP 621 quanto no do Poetry, e ambos
-são lidos na mesma execução:
-
-```bash
+# pyproject.toml — declara dependências no padrão da PEP 621 e no do Poetry,
+# e ambos são lidos na mesma execução
 python -m src.main --input examples/pyproject-exemplo.toml --output pyproject-report.xlsx
 ```
+
+Os números podem variar um pouco de uma execução para outra: os dados do
+portal mudam com o tempo.
 
 ### Opções
 

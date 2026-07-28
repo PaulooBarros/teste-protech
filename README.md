@@ -62,17 +62,87 @@ O parser é escolhido pela extensão do arquivo, então nomes como
 
 O enunciado pede para ler as dependências "de um projeto Python", sem
 restringir onde o projeto está. O `--input` aceita também uma URL, o que
-permite auditar um repositório sem cloná-lo:
+permite auditar um repositório sem cloná-lo.
+
+Os comandos abaixo foram testados e funcionam contra projetos reais:
 
 ```bash
+# Flask — as dependências de produção do framework (6 pacotes)
+python -m src.main \
+  --input https://raw.githubusercontent.com/pallets/flask/main/pyproject.toml \
+  --output flask.xlsx
+
+# Black — o formatador de código (8 pacotes)
+python -m src.main \
+  --input https://raw.githubusercontent.com/psf/black/main/pyproject.toml \
+  --output black.xlsx
+
+# FastAPI (5 pacotes)
+python -m src.main \
+  --input https://raw.githubusercontent.com/tiangolo/fastapi/master/pyproject.toml \
+  --output fastapi.xlsx
+
+# Django (3 pacotes)
+python -m src.main \
+  --input https://raw.githubusercontent.com/django/django/main/pyproject.toml \
+  --output django.xlsx
+
+# requests — o arquivo de dependências de desenvolvimento (6 pacotes)
 python -m src.main \
   --input https://raw.githubusercontent.com/psf/requests/main/requirements-dev.txt \
   --output requests.xlsx
 ```
 
+Cada dependência exige uma consulta ao PyPI e outra ao portal, então conte
+cerca de dez segundos por pacote.
+
 A extensão é lida do caminho da URL, ignorando a query string — portanto
 `.../requirements.txt?raw=1` continua sendo tratado como `.txt`. Arquivos
 acima de 5 MB são recusados.
+
+### Como a aplicação reage a entradas inválidas
+
+Erros de entrada encerram a execução com uma mensagem direta, sem
+`Traceback`, e com código de saída `1` — o que permite encadear a ferramenta
+em scripts.
+
+**URL que não existe:**
+
+```bash
+python -m src.main \
+  --input https://raw.githubusercontent.com/exemplo/projeto-inexistente/main/requirements.txt \
+  --output x.xlsx
+```
+
+```
+Não foi possível baixar https://raw.githubusercontent.com/exemplo/projeto-inexistente/main/requirements.txt: 404 Client Error: Not Found
+```
+
+**Arquivo local que não existe:**
+
+```bash
+python -m src.main --input nao-existe.txt --output x.xlsx
+```
+
+```
+Arquivo de entrada não encontrado: nao-existe.txt
+```
+
+**Formato não suportado:**
+
+```bash
+python -m src.main --input README.md --output x.xlsx
+```
+
+```
+Formato não suportado: README.md. Use um arquivo .txt, .toml.
+```
+
+Já as falhas **durante a coleta** têm tratamento diferente: elas não
+interrompem nada. Se um pacote não existir no portal ou a consulta expirar, o
+motivo vai para o log, a linha é gerada com os campos disponíveis e o
+processamento segue para a próxima dependência. Um relatório parcial é mais
+útil que nenhum relatório.
 
 ## Exemplo da planilha gerada
 

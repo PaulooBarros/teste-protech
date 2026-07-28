@@ -89,6 +89,15 @@ class TestCicloDeVida:
         with pytest.raises(RuntimeError, match="navegador não foi iniciado"):
             scraper.fetch("flask")
 
+    def test_limita_o_tempo_de_carga_da_pagina(self):
+        """Sem o limite, `get()` espera para sempre por uma página travada."""
+        criado = Mock()
+
+        with patch("src.snyk_scraper.webdriver.Chrome", return_value=criado):
+            SnykScraper(page_load_timeout=30).start()
+
+        criado.set_page_load_timeout.assert_called_once_with(30)
+
 
 class TestCarregamentoDaPagina:
     """Política de repetição: insistir só quando há chance de sucesso."""
@@ -136,6 +145,19 @@ class TestCarregamentoDaPagina:
             scraper.fetch("flask")
 
         assert [chamada.args[0] for chamada in sleep.call_args_list] == [2.0, 4.0, 6.0]
+
+    def test_repete_quando_a_carga_da_pagina_expira(self):
+        """`get()` também pode expirar, e isso é transitório como o resto.
+
+        Regressão: o `TimeoutException` do carregamento caía no `except
+        WebDriverException`, que desiste na primeira tentativa.
+        """
+        driver = fake_driver()
+        driver.get.side_effect = TimeoutException("tempo de carga esgotado")
+        scraper = SnykScraper(driver=driver, attempts=3, retry_wait=0)
+
+        assert scraper.fetch("flask") == SnykPackageData()
+        assert driver.get.call_count == 3
 
     def test_falha_do_navegador_nao_e_repetida(self):
         """Navegador quebrado não se recupera sozinho entre tentativas."""

@@ -74,9 +74,11 @@ class SnykScraper:
         headless: bool = True,
         attempts: int = 3,
         retry_wait: float = 2.0,
+        page_load_timeout: int = 30,
         driver: webdriver.Chrome | None = None,
     ) -> None:
         self._driver = driver
+        self._page_load_timeout = page_load_timeout
         self._driver_path = driver_path
         self._timeout = timeout
         self._filter_timeout = filter_timeout
@@ -112,6 +114,10 @@ class SnykScraper:
         # versão 4.6) baixa e configura o driver compatível automaticamente.
         service = ChromeService(str(self._driver_path)) if self._driver_path else None
         self._driver = webdriver.Chrome(service=service, options=options)
+
+        # Sem este limite, `get()` espera indefinidamente por uma página que
+        # nunca termina de carregar, e a política de repetição nunca roda.
+        self._driver.set_page_load_timeout(self._page_load_timeout)
 
     def stop(self) -> None:
         """Encerra o navegador."""
@@ -159,18 +165,16 @@ class SnykScraper:
         for attempt in range(1, self._attempts + 1):
             try:
                 self._driver.get(url)
-            except WebDriverException as exc:
-                logger.error("Falha ao acessar o Snyk para %s: %s", package_name, exc)
-                return False
 
-            if self._package_is_missing():
-                logger.info("Pacote não catalogado no portal Snyk: %s", package_name)
-                return False
+                if self._package_is_missing():
+                    logger.info("Pacote não catalogado no portal Snyk: %s", package_name)
+                    return False
 
-            try:
                 self._wait_for_package_page()
                 return True
             except TimeoutException:
+                # Cobre tanto o tempo de carga da página quanto a espera pelo
+                # conteúdo. Ambos são transitórios e merecem nova tentativa.
                 if attempt >= self._attempts:
                     break
                 wait = self._retry_wait * attempt
@@ -182,6 +186,10 @@ class SnykScraper:
                     wait,
                 )
                 time.sleep(wait)
+            except WebDriverException as exc:
+                # `TimeoutException` é subclasse desta e já foi tratada acima.
+                logger.error("Falha ao acessar o Snyk para %s: %s", package_name, exc)
+                return False
 
         logger.warning(
             "Não foi possível ler a página de %s após %d tentativas",

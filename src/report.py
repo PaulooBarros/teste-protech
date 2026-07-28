@@ -92,9 +92,9 @@ COLUMNS: Sequence[Column] = (
 
 @dataclass(frozen=True)
 class ReportSummary:
-    """Números consolidados de uma execução.
+    """numeros consolidados de uma execução.
 
-    Contagens e somas são coisas diferentes: `packages_at_risk` responde
+    contagens e somas são coisas diferentes: `packages_at_risk` responde
     "quantos pacotes preciso olhar", enquanto `current_vulnerabilities`
     responde "quantos problemas existem no total". Um único pacote muito
     vulnerável distorceria o primeiro número se fossem confundidos.
@@ -225,7 +225,7 @@ def _write_summary(workbook: Workbook, summary: ReportSummary) -> None:
         cell.font = HEADER_FONT
         cell.alignment = HEADER_ALIGNMENT
 
-    # `alert` marca as linhas que pedem atenção quando o valor não é zero.
+    # alert marca as linhas que pedem atenção quando o valor não é zero.
     metrics = [
         ("Dependências analisadas", summary.analyzed, False),
         (f"Com score abaixo de {SCORE_THRESHOLD}", summary.below_threshold, True),
@@ -249,7 +249,7 @@ def _write_summary(workbook: Workbook, summary: ReportSummary) -> None:
 
 
 def _write_legend(workbook: Workbook) -> None:
-    """Cria uma aba explicando as colunas e o critério de destaque."""
+    """cria uma aba explicando as colunas e o critério de destaque."""
     sheet = workbook.create_sheet("Legenda")
     sheet.column_dimensions["A"].width = 32
     sheet.column_dimensions["B"].width = 78

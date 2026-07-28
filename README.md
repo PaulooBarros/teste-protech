@@ -51,6 +51,22 @@ python -m src.main --input pyproject.toml --output report.xlsx
 O parser é escolhido pela extensão do arquivo, então nomes como
 `requirements-dev.txt` também funcionam.
 
+### Analisando um projeto remoto
+
+O enunciado pede para ler as dependências "de um projeto Python", sem
+restringir onde o projeto está. O `--input` aceita também uma URL, o que
+permite auditar um repositório sem cloná-lo:
+
+```bash
+python -m src.main \
+  --input https://raw.githubusercontent.com/psf/requests/main/requirements-dev.txt \
+  --output requests.xlsx
+```
+
+A extensão é lida do caminho da URL, ignorando a query string — portanto
+`.../requirements.txt?raw=1` continua sendo tratado como `.txt`. Arquivos
+acima de 5 MB são recusados.
+
 ## Exemplo
 
 A pasta `examples/` traz arquivos de entrada nos dois formatos aceitos e a

@@ -16,6 +16,7 @@ from src.parsers import parse_pyproject, parse_requirements
 from src.pypi_client import PyPiClient
 from src.report import build_report
 from src.snyk_scraper import SnykScraper
+from src.sources import SourceError, read_source
 
 # O parser é escolhido pela extensão, e não pelo nome exato do arquivo:
 # nomes como `requirements-dev.txt` são comuns e devem funcionar.
@@ -31,7 +32,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Gera relatório Excel de dependências Python com dados do PyPI e Snyk."
     )
-    parser.add_argument("--input", required=True, help="Arquivo requirements.txt ou pyproject.toml")
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Caminho ou URL de um requirements.txt ou pyproject.toml",
+    )
     parser.add_argument("--output", required=True, help="Arquivo Excel de saída")
     parser.add_argument("--driver", help="Caminho opcional para o ChromeDriver")
     parser.add_argument(
@@ -58,20 +63,22 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_dependencies(source_path: Path, logger: logging.Logger) -> dict[str, str | None]:
-    """Lê as dependências do arquivo de entrada."""
-    if not source_path.exists():
-        raise SystemExit(f"Arquivo de entrada não encontrado: {source_path}")
+def load_dependencies(location: str | Path, logger: logging.Logger) -> dict[str, str | None]:
+    """Lê as dependências da entrada, que pode ser um caminho ou uma URL."""
+    try:
+        source = read_source(location)
+    except SourceError as exc:
+        raise SystemExit(str(exc)) from exc
 
-    parser = PARSERS_BY_SUFFIX.get(source_path.suffix.lower())
+    parser = PARSERS_BY_SUFFIX.get(source.suffix)
     if parser is None:
         suportados = ", ".join(PARSERS_BY_SUFFIX)
         raise SystemExit(
-            f"Formato não suportado: {source_path.name}. Use um arquivo {suportados}."
+            f"Formato não suportado: {source.origin}. Use um arquivo {suportados}."
         )
 
-    dependencies = parser(source_path)
-    logger.info("%d dependências encontradas em %s", len(dependencies), source_path)
+    dependencies = parser(source.text)
+    logger.info("%d dependências encontradas em %s", len(dependencies), source.origin)
     return dependencies
 
 
@@ -137,7 +144,7 @@ def main() -> None:
         verbose=args.verbose,
     )
 
-    dependencies = load_dependencies(Path(args.input), logger)
+    dependencies = load_dependencies(args.input, logger)
 
     collected: list[DependencyInfo] = []
     scraper = SnykScraper(

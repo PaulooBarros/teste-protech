@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 import tomllib
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("dependency_report.parsers")
@@ -21,36 +20,39 @@ REQUIREMENT_PATTERN = re.compile(
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
-def parse_requirements(path: Path) -> dict[str, str | None]:
-    """Lê as dependências declaradas em um `requirements.txt`."""
+def parse_requirements(text: str) -> dict[str, str | None]:
+    """Lê as dependências declaradas no conteúdo de um `requirements.txt`.
+
+    Recebe o texto já lido, e não um caminho: assim a mesma função serve para
+    arquivo local e para conteúdo baixado de uma URL, e os testes dispensam
+    criar arquivos temporários.
+    """
     dependencies: dict[str, str | None] = {}
 
-    with path.open("r", encoding="utf-8") as handler:
-        for line_number, line in enumerate(handler, start=1):
-            requirement = _strip_annotations(line)
-            if not requirement:
-                continue
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        requirement = _strip_annotations(line)
+        if not requirement:
+            continue
 
-            parsed = _parse_requirement(requirement)
-            if parsed is None:
-                # Linhas de opção (-r, -e, --index-url) e hashes caem aqui.
-                logger.debug("Linha %d ignorada em %s: %r", line_number, path.name, requirement)
-                continue
+        parsed = _parse_requirement(requirement)
+        if parsed is None:
+            # Linhas de opção (-r, -e, --index-url) e hashes caem aqui.
+            logger.debug("Linha %d ignorada: %r", line_number, requirement)
+            continue
 
-            name, version = parsed
-            dependencies[name] = version
+        name, version = parsed
+        dependencies[name] = version
 
     return dependencies
 
 
-def parse_pyproject(path: Path) -> dict[str, str | None]:
-    """Lê as dependências de um `pyproject.toml`.
+def parse_pyproject(text: str) -> dict[str, str | None]:
+    """Lê as dependências do conteúdo de um `pyproject.toml`.
 
     Cobre tanto o formato padrão (PEP 621, em `[project]`) quanto o do Poetry
     (em `[tool.poetry]`), já que ambos são comuns em projetos Python.
     """
-    with path.open("rb") as handler:
-        content = tomllib.load(handler)
+    content = tomllib.loads(text)
 
     dependencies: dict[str, str | None] = {}
     dependencies.update(_extract_dependencies(content.get("project", {}).get("dependencies")))
